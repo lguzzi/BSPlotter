@@ -8,12 +8,11 @@ class BSParser:
   '''class to handle beamspot file operations
   '''
   CANFAIL=False
-  STREAMS=10
   COOKIE = get_cookie('https://cmsoms.cern.ch/')
-  MANAGER=MPManager(threads=10)
+  MANAGER=MPManager()
+
   def __init__(self, file):
     self.filename = os.path.basename(file)
-    self.manager  = MPManager(threads=BSParser.STREAMS)
     self.beamspot = BSParser.readTxtFile(file, canfail=BSParser.CANFAIL)
   
   def fetch_from_OMS(self):
@@ -52,7 +51,7 @@ class BSParser:
       toepoch(lejsn['data']['attributes']['end_time'  ]) -
       toepoch(lsjsn['data']['attributes']['start_time'])
     )
-    BSParser.MANAGER.progress.value += 1./tot
+    BSParser.MANAGER.progress.value += 100./tot
     return beamspot
   
   @staticmethod

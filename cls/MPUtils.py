@@ -2,35 +2,25 @@ import  multiprocessing as mp
 from    multiprocessing import managers
 import  time, os, sys
 
-class MPManager(managers.SyncManager):
+class MPManager:
   ''' manage multiprocess operations
   '''
-  def __init__(self, threads=1):
-    super().__init__()
-    self.threads  = threads
-    self.start()
-    self.progress = self.Value('f', 0.0)
-  
-  @staticmethod
-  def _notify_manager(manager, function):
-    def func(args):
-      return function(args)
-    manager.progress.value += 10
-    return func
+  THREADS = 1
+  def __init__(self):
+    self.progress = mp.Value('f', 0.0)
 
   def run_parallel(self, function, iterables):
     ''' run a function in parallel and print a progressbar
     '''
-    with mp.Pool(self.threads) as pool:
+    with mp.Pool(MPManager.THREADS) as pool:
       print('[INFO] running parallel on {} jobs'.format(self.threads))
       progressbar = mp.Process(target=self._progressbar)
       progressbar.start()
-      results = pool.map(_notify_manager(self,function), iterables)
+      results = pool.map(function, iterables)
       self.progress.value = 100
       time.sleep(0.1)
-      progressbar.terminate()   
+      progressbar.terminate()
     print()
-    self.progress.value = 0.0
     return results
 
   def _progressbar(self):
