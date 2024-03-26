@@ -11,15 +11,17 @@ class BSParser:
   COOKIE = get_cookie('https://cmsoms.cern.ch/')
   MANAGER=MPManager()
 
-  def __init__(self, file):
+  def __init__(self, file, threads=1, flavour='default'):
     self.filename = os.path.basename(file)
-    self.beamspot = BSParser.readTxtFile(file, canfail=BSParser.CANFAIL)
+    self.beamspot = BSParser.readTxtFile(file, canfail=BSParser.CANFAIL, flavour=flavour)
+    self.threads  = threads
+    self.flavour  = flavour
   
   def fetch_from_OMS(self):
     ''' fetch data from OMS with parallel streams
     '''
     print("[INFO] fetching data from OMS for", self.filename)    
-    fetched = BSParser.MANAGER.run_parallel(
+    fetched = BSParser.MANAGER.run_parallel(threads=self.threads,
       function=BSParser._fetch, 
       iterables=[(r,ls,le,len(self.beamspot.keys())) for (r,ls,le) in self.beamspot.keys()]
     )
@@ -55,14 +57,14 @@ class BSParser:
     return beamspot
   
   @staticmethod
-  def readTxtFile(file, canfail=False):
+  def readTxtFile(file, canfail=False, flavour='default'):
     '''read a .txt beamspot file written in the 
     beamspot producer format and save the results
     in a dictionary 
     {
       (run,ls_start,ls_end): info
     }
-    Use canfail to select also non-converging fits
+    Use --canfail to select also non-converging fits
     '''
     with open(file, 'r') as ifile:
       beamspot = {
@@ -80,10 +82,14 @@ class BSParser:
           'dydz'      : float (lines[10].split(' ')[-1]),
           'widthX'    : float (lines[11].split(' ')[-1]),
           'widthY'    : float (lines[12].split(' ')[-1]),
-          'emittanceX': float (lines[20].split(' ')[-1]),
-          'emittanceY': float (lines[21].split(' ')[-1]),
-          'betaStar'  : float (lines[22].split(' ')[-1]),
+          'emittanceX': float (lines[20+16 if flavour=='vdm' else 20].split(' ')[-1]),
+          'emittanceY': float (lines[21+16 if flavour=='vdm' else 21].split(' ')[-1]),
+          'betaStar'  : float (lines[22+16 if flavour=='vdm' else 22].split(' ')[-1]),
           'covariance': [[float(e) for e in row.split(' ')[1:] if len(e)] for row in lines[13:20]],
+          #'emittanceX': float (lines[20].split(' ')[-1]),
+          #'emittanceY': float (lines[21].split(' ')[-1]),
+          #'betaStar'  : float (lines[22].split(' ')[-1]),
+          #'covariance': [[float(e) for e in row.split(' ')[1:] if len(e)] for row in lines[13:20]],
         } for lines in [d.split('\n') for d in ifile.read().split('Runnumber ') if len(d)]
         if int(lines[4] .split(' ')[-1])==2 or canfail
       }
