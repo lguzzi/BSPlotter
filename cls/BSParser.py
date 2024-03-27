@@ -43,7 +43,9 @@ class BSParser:
     beamspot = {}
     beamspot[(run,ls,le)] = {}
     beamspot[(run,ls,le)]['fill'     ] = filljsn['data']['id']
+    beamspot[(run,ls,le)]['run'      ] = runjsn ['data']['id']
     beamspot[(run,ls,le)]['fillstamp'] = toepoch(filljsn['data']['attributes']['start_time'])
+    beamspot[(run,ls,le)]['runstamp' ] = toepoch(runjsn ['data']['attributes']['start_time'])
     beamspot[(run,ls,le)]['date'     ] = lsjsn['data']['attributes']['start_time'] 
     beamspot[(run,ls,le)]['timestamp'] = 0.5*(
       toepoch(lejsn['data']['attributes']['end_time'  ]) +

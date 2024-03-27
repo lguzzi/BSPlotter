@@ -5,6 +5,8 @@ from CMSStyle import CMS_lumi
 from datetime import datetime
 from BSGraph  import BSGraphByTime
 from BSCanvas import BSCanvasCMS
+from BSLine   import BSLineRun, BSLineFill
+from BSLatex  import BSLatexRun, BSLatexFill
 from datetime import datetime
 
 ROOT.gROOT.SetBatch(True)
@@ -14,13 +16,13 @@ class BSPlotter:
   data from the BSParser
   '''
   TOPLOT  = {
-    'x'     : 'beam spot x [cm]'      ,
-    'y'     : 'beam spot y [cm]'      ,
-    'z'     : 'beam spot z [cm]'      ,
-    'widthX': 'beam spot #sigma_x [cm]',
-    'widthY': 'beam spot #sigma_y [cm]',
-    'widthZ': 'beam spot #sigma_z [cm]',
-    'dxdz'  : 'beam spot dx/dz'       ,
+    'x'     : 'beam spot x [cm]'        ,
+    'y'     : 'beam spot y [cm]'        ,
+    'z'     : 'beam spot z [cm]'        ,
+    'widthX': 'beam spot #sigma_x [cm]' ,
+    'widthY': 'beam spot #sigma_y [cm]' ,
+    'widthZ': 'beam spot #sigma_z [cm]' ,
+    'dxdz'  : 'beam spot dx/dz'         ,
     'dydz'  : 'beam spot dy/dz'
   }
   def __init__(self, name, data):
@@ -32,6 +34,9 @@ class BSPlotterByTime(BSPlotter):
   '''
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
+    fills = set([(self.data[k]['fill'], self.data[k]['fillstamp']) for k in self.data.keys()])
+    runs  = set([(self.data[k]['run' ], self.data[k]['runstamp' ]) for k in self.data.keys()])
+
     self.graphs = {
       v: BSGraphByTime(len(self.data.keys()),
         array('d', [bs['timestamp']  for bs in self.data.values()]),
@@ -39,25 +44,25 @@ class BSPlotterByTime(BSPlotter):
       ) 
       for v in BSPlotter.TOPLOT.keys()
     }
+    self.cosmetics = {}
     for v, g in self.graphs.items():
-      g.SetTitle(';{X};{Y}'.format(X='date', Y=BSPlotter.TOPLOT[v]))
-    for g in self.graphs.values():
-      dates = BSPlotterByTime.nicetimestamp([_ for _ in g.GetX()])
-      for i,d in enumerate(dates):
-        g.GetXaxis().SetBinLabel(i+1, d)
+      g.SetTitle(';{X};{Y}'.format(X='date (UTC)', Y=BSPlotter.TOPLOT[v]))
+      ymin = g.GetYaxis().GetXmin()
+      ymax = g.GetYaxis().GetXmax()
+      xmin = g.GetXaxis().GetXmin()
+      xmax = g.GetXaxis().GetXmax()
+      self.cosmetics[v] = [
+        BSLineFill (t, ymin, t, ymax) for f, t in fills if xmin < t < xmax]+[
+        BSLineRun  (t, ymin, t, ymax) for r, t in runs  if xmin < t < xmax]+[
+        BSLatexFill(t+0.01*(xmax-xmin), ymax-0.16*(ymax-ymin), f) for f, t in fills if xmin < t < xmax]+[
+        BSLatexRun (t+0.01*(xmax-xmin), ymax-0.16*(ymax-ymin), r) for r, t in runs  if xmin < t < xmax]
 
   def save(self, dirout):
     os.makedirs(dirout, exist_ok=True)
     can = BSCanvasCMS(lumiText="13.6 TeV")
     for v, g in self.graphs.items():
-      g.Draw("AP")
+      g.Draw("AP SAME")
+      for c in self.cosmetics[v]:
+        c.Draw("SAME")
       can.SaveAs(dirout+'/'+v+'.pdf', 'pdf')
-  
-  @staticmethod
-  def nicetimestamp(timestamps, period=10):
-    ''' convert a timestamp every period to a date string
-    '''
-    return [str(datetime.fromtimestamp(int(d))) if not i%int(len(timestamps)//period) else '' 
-      for i,d in enumerate(timestamps)
-    ]
-
+      can.SaveAs(dirout+'/'+v+'.png', 'png')
