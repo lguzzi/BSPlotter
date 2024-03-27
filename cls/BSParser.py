@@ -3,6 +3,7 @@ sys.path.append('cls')
 from MPUtils  import MPManager
 from OMSUtils import fetch_data, get_cookie
 from datetime import datetime
+from BSFormat import BSFormatVanilla, BSFormatVdM
 
 class BSParser:
   '''class to handle beamspot file operations
@@ -57,7 +58,7 @@ class BSParser:
     )
     BSParser.MANAGER.progress.value += 100./tot
     return beamspot
-  
+
   @staticmethod
   def readTxtFile(file, canfail=False, flavour='default'):
     '''read a .txt beamspot file written in the 
@@ -69,30 +70,6 @@ class BSParser:
     Use --canfail to select also non-converging fits
     '''
     with open(file, 'r') as ifile:
-      beamspot = {
-        ( int(lines[0]              ), 
-          int(lines[3].split(' ')[1]), 
-          int(lines[3].split(' ')[3])): {
-          'beginTime' : int   (lines[1] .split(' ')[-1]),
-          'endTime'   : int   (lines[2] .split(' ')[-1]),
-          'fittype'   : int   (lines[4] .split(' ')[-1]),
-          'x'         : float (lines[5] .split(' ')[-1]),
-          'y'         : float (lines[6] .split(' ')[-1]),
-          'z'         : float (lines[7] .split(' ')[-1]),
-          'widthZ'    : float (lines[8] .split(' ')[-1]),
-          'dxdz'      : float (lines[9] .split(' ')[-1]),
-          'dydz'      : float (lines[10].split(' ')[-1]),
-          'widthX'    : float (lines[11].split(' ')[-1]),
-          'widthY'    : float (lines[12].split(' ')[-1]),
-          'emittanceX': float (lines[20+16 if flavour=='vdm' else 20].split(' ')[-1]),
-          'emittanceY': float (lines[21+16 if flavour=='vdm' else 21].split(' ')[-1]),
-          'betaStar'  : float (lines[22+16 if flavour=='vdm' else 22].split(' ')[-1]),
-          'covariance': [[float(e) for e in row.split(' ')[1:] if len(e)] for row in lines[13:20]],
-          #'emittanceX': float (lines[20].split(' ')[-1]),
-          #'emittanceY': float (lines[21].split(' ')[-1]),
-          #'betaStar'  : float (lines[22].split(' ')[-1]),
-          #'covariance': [[float(e) for e in row.split(' ')[1:] if len(e)] for row in lines[13:20]],
-        } for lines in [d.split('\n') for d in ifile.read().split('Runnumber ') if len(d)]
-        if int(lines[4] .split(' ')[-1])==2 or canfail
-      }
+      beamspot = BSFormatVdM(ifile, canfail).get() if flavour=='vdm' else BSFormatVanilla(ifile, canfail).get()
+    
     return beamspot
