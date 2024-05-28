@@ -59,7 +59,7 @@ class BSPlotterByTime(BSPlotter):
 
   def save(self, dirout):
     os.makedirs(dirout, exist_ok=True)
-    can = BSCanvasCMS(lumiText="13.6 TeV")
+    can = BSCanvasCMS(lumitext="13.6 TeV", extratext='Internal')
     for v, g in self.graphs.items():
       g.Draw("AP SAME")
       for c in self.cosmetics[v]:
