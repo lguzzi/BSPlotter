@@ -9,7 +9,6 @@ class BSCanvas (ROOT.TCanvas):
     self.SetGridx()
     self.SetGridy()
     self.SetBottomMargin(0.1)
-    self.SetGridy()
 
 class BSCanvasCMS(BSCanvas):
   ''' apply default CMS cosmetics to the canvas

@@ -1,5 +1,4 @@
 import ROOT
-from CMSStyle import CMS_lumi
 
 class BSLatex (ROOT.TLatex):
   ''' class for handling the TLatex style. The drawn text is passed as the 

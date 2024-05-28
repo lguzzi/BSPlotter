@@ -1,7 +1,6 @@
 import ROOT
 import os
 from array    import array
-from CMSStyle import CMS_lumi
 from datetime import datetime
 from BSGraph  import BSGraphByTime
 from BSCanvas import BSCanvasCMS
