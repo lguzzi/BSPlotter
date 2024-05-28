@@ -6,7 +6,7 @@ from datetime import datetime
 from BSGraph  import BSGraphByTime
 from BSCanvas import BSCanvasCMS
 from BSLine   import BSLineRun, BSLineFill
-from BSLatex  import BSLatexRun, BSLatexFill
+from BSLatex  import BSLatexRun, BSLatexFill, BSLatexRunOOR, BSLatexFillOOR
 from datetime import datetime
 
 ROOT.gROOT.SetBatch(True)
@@ -52,10 +52,10 @@ class BSPlotterByTime(BSPlotter):
       xmin = g.GetXaxis().GetXmin()
       xmax = g.GetXaxis().GetXmax()
       self.cosmetics[v] = [
-        BSLineFill (t, ymin, t, ymax) for f, t in fills if xmin < t < xmax]+[
-        BSLineRun  (t, ymin, t, ymax) for r, t in runs  if xmin < t < xmax]+[
-        BSLatexFill(t+0.01*(xmax-xmin), ymax-0.16*(ymax-ymin), f) for f, t in fills if xmin < t < xmax]+[
-        BSLatexRun (t+0.01*(xmax-xmin), ymax-0.16*(ymax-ymin), r) for r, t in runs  if xmin < t < xmax]
+        BSLineFill (t, ymin, t, ymax) for f, t in fills if xmin < t < xmax ]+[
+        BSLineRun  (t, ymin, t, ymax) for r, t in runs  if xmin < t < xmax ]+[
+        BSLatexFill(t+0.01*(xmax-xmin), ymax-0.2*(ymax-ymin), f) if xmin < t < xmax else BSLatexFillOOR(xmin+0.01*(xmax-xmin), ymax-0.05*(ymax-ymin), "since fill " +f) for f, t in fills]+[
+        BSLatexRun (t+0.01*(xmax-xmin), ymax-0.2*(ymax-ymin), r) if xmin < t < xmax else BSLatexRunOOR (xmin+0.01*(xmax-xmin), ymax-0.10*(ymax-ymin), "since run "  +r) for r, t in runs ]
 
   def save(self, dirout):
     os.makedirs(dirout, exist_ok=True)

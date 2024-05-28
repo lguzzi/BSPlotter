@@ -23,6 +23,13 @@ class BSLatexRun(BSLatex):
     self.SetTextColorAlpha(ROOT.kBlue, 1.0)
     self.SetTextAngle(90)
 
+class BSLatexRunOOR(BSLatexRun):
+  ''' write run number on the canvas for out of range runs
+  '''
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.SetTextAngle(0)
+
 class BSLatexFill(BSLatex):
   ''' write fill number on the canvas
   '''
@@ -31,3 +38,10 @@ class BSLatexFill(BSLatex):
     self.SetTextSize(0.04)
     self.SetTextColorAlpha(ROOT.kRed, 1.0)
     self.SetTextAngle(90)
+
+class BSLatexFillOOR(BSLatexFill):
+  ''' write run number on the canvas for out of range fills
+  '''
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.SetTextAngle(0)
