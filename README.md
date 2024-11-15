@@ -4,3 +4,5 @@ Command example:
 kinit
 python3 plotter.py --input BSFit_VdM2023_partial.txt --streams 1 --flavour vdm
 ```
+
+**NOTE:** at the moment, ROOT=6.30.04 is needed, <ins>not newer</ins>, due to a problem similar to [this one](https://root-forum.cern.ch/t/typeerror-no-python-side-overrides-supported-failed-to-compile-the-dispatcher-code/53198/20).
