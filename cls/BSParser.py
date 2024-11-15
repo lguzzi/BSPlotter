@@ -1,7 +1,7 @@
 import os, sys
 sys.path.append('cls')
 from MPUtils  import MPManager
-from OMSUtils import fetch_data, get_cookie
+from OMSUtils import fetch_data
 from datetime import datetime
 from BSFormat import BSFormatVanilla, BSFormatVdM
 
@@ -9,8 +9,8 @@ class BSParser:
   '''class to handle beamspot file operations
   '''
   CANFAIL=False
-  COOKIE = get_cookie('https://cmsoms.cern.ch/')
   MANAGER=MPManager()
+  DEBUG=False
 
   def __init__(self, file, threads=1, flavour='default'):
     self.filename = os.path.basename(file)
@@ -24,7 +24,8 @@ class BSParser:
     print("[INFO] fetching data from OMS for", self.filename)    
     fetched = BSParser.MANAGER.run_parallel(threads=self.threads,
       function=BSParser._fetch, 
-      iterables=[(r,ls,le,len(self.beamspot.keys())) for (r,ls,le) in self.beamspot.keys()]
+      iterables=[(r,ls,le,len(self.beamspot.keys())) for (r,ls,le) in self.beamspot.keys()],
+      debug=BSParser.DEBUG
     )
     fetched = {k:v for f in fetched for k,v in f.items()}
     for k in fetched.keys():
@@ -35,12 +36,12 @@ class BSParser:
     ''' base function for fetching BS information from OMS
     '''
     run,ls,le,tot = entry
-    URL     = "https://cmsoms.cern.ch/agg/api/v1/{K}/{ID}/"
     toepoch = lambda tme: (datetime.strptime(tme, "%Y-%m-%dT%H:%M:%SZ")-datetime(1970,1,1)).total_seconds()
-    runjsn  = fetch_data(cookie=BSParser.COOKIE, url=URL.format(K='runs'         , ID=run))
-    lsjsn   = fetch_data(cookie=BSParser.COOKIE, url=URL.format(K='lumisections' , ID='_'.join([str(run), str(ls)])))
-    lejsn   = fetch_data(cookie=BSParser.COOKIE, url=URL.format(K='lumisections' , ID='_'.join([str(run), str(le)]))) if le!=ls else lsjsn
-    filljsn = fetch_data(cookie=BSParser.COOKIE, url=URL.format(K='fills'        , ID=runjsn['data']['attributes']['fill_number']))
+    runjsn  = fetch_data(datatype='runs'         , dataid=run, verbose=BSParser.DEBUG)
+    lsjsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(ls)]), verbose=BSParser.DEBUG)
+    lejsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(le)]), verbose=BSParser.DEBUG) if le!=ls else lsjsn
+    filljsn = fetch_data(datatype='fills'        , dataid=runjsn['data']['attributes']['fill_number'], verbose=BSParser.DEBUG)
+
     beamspot = {}
     beamspot[(run,ls,le)] = {}
     beamspot[(run,ls,le)]['fill'     ] = filljsn['data']['id']

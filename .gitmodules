@@ -1,0 +1,3 @@
+[submodule "oms-api-client"]
+	path = oms-api-client
+	url = https://:@gitlab.cern.ch:8443/cmsoms/oms-api-client.git

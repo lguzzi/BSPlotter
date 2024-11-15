@@ -8,18 +8,22 @@ class MPManager:
   def __init__(self, threads=1):
     self.progress = mp.Value('f', 0.0)
 
-  def run_parallel(self, function, iterables, threads):
+  def run_parallel(self, function, iterables, threads, debug=False):
     ''' run a function in parallel and print a progressbar
     '''
-    with mp.Pool(threads) as pool:
-      print('[INFO] running parallel on {} jobs'.format(threads))
-      progressbar = mp.Process(target=self._progressbar)
-      progressbar.start()
-      results = pool.map(function, iterables)
-      self.progress.value = 100
-      time.sleep(0.1)
-      progressbar.terminate()
-    print()
+    if not debug:
+      with mp.Pool(threads) as pool:
+        print('[INFO] running parallel on {} jobs'.format(threads))
+        progressbar = mp.Process(target=self._progressbar)
+        progressbar.start()
+        results = pool.map(function, iterables)
+        self.progress.value = 100
+        time.sleep(0.1)
+        progressbar.terminate()
+      print()
+    else:
+      print('[WARNING] running test job in debug mode')
+      results = [function(i) for i in iterables]
     return results
 
   def _progressbar(self):

@@ -1,24 +1,11 @@
-import http.cookiejar as cookielib
-import requests
-import os, sys
+import importlib
+OMSAPI = importlib.import_module("oms-api-client.omsapi").OMSAPI
 
-def fetch_data(url, cookie):
-  ''' fetch data from an OMS url using a pre-generated cookie
+def fetch_data(datatype, dataid, authentication='auth_device', verbose=False):
+  ''' fetch data from an OMS url using the official OMS API interface https://gitlab.cern.ch/cmsoms/oms-api-client
   '''
-  req = requests.get(url, verify=True, cookies=cookie, allow_redirects=False)
-  if not req.ok: return {}
-  jsn = req.json()
-  if not 'data' in jsn.keys(): return {}
-  return jsn
-
-def get_cookie(url):
-  '''generate a cookie for the OMS website
-  '''
-  print('[INFO] generating cookie for', url)
-  cookiepath = './.cookiefile_OMSfetch.txt'
-  cmd = 'auth-get-sso-cookie --url "{}" -o {}'.format(url, cookiepath)
-  ret = os.system(cmd)
-  cookie = cookielib.MozillaCookieJar(cookiepath)
-  cookie.load()
-  os.remove(cookiepath)
-  return cookie
+  omsapi = OMSAPI("https://cmsoms.cern.ch/agg/api", "v1", cert_verify=False, verbose=verbose)
+  getattr(omsapi, authentication)()
+  query     = omsapi.query('/'.join([datatype, str(dataid)]))
+  response  = query.data()
+  return response.json() if response.ok else {}
