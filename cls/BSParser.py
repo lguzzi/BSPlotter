@@ -3,7 +3,7 @@ sys.path.append('cls')
 from MPUtils  import MPManager
 from OMSUtils import fetch_data, get_authenticator
 from datetime import datetime
-from BSFormat import BSFormatVanilla, BSFormatVdM, BSFormatOut
+from BSFormat import FormatInputTxt, FormatOutputTxt
 import uncertainties as unc
 import numpy as np
 
@@ -23,8 +23,7 @@ class BSParser:
   def writeTxtFile(self, filename):
     ''' write a .txt file with specific formatting
     '''
-    formatter = BSFormatOut(self.beamspot, formatting=self.flavour)
-    formatter.write(filename=filename)
+    formatter = FormatOutputTxt(self.beamspot, formatting=self.flavour)
 
   def fetch_timestamps_from_OMS(self):
     ''' fetch timestamps from OMS with parallel streams
@@ -38,7 +37,7 @@ class BSParser:
     fetched = {k:v for f in fetched for k,v in f.items()}
     for k in fetched.keys():
       self.beamspot[k] = {**self.beamspot[k],**fetched[k]}
-      BSParser._rotate_coordiantes(self.beamspot[k])
+      BSParser._compute_proper_widths(self.beamspot[k])
 
   @staticmethod
   def _fetch_timestamps_from_OMS(entry):
@@ -77,7 +76,7 @@ class BSParser:
     return beamspot
 
   @staticmethod
-  def _rotate_coordiantes(beamspot):
+  def _compute_proper_widths(beamspot):
     ''' Rotate back the covariance matrix by -dx/dz and -dy/dz.
     The sigma_x and sigma_y *of the luminous region itself* are set.
     The dx/dy rotation is not corrected (but it's small).
@@ -124,6 +123,6 @@ class BSParser:
     }
     '''
     with open(file, 'r') as ifile:
-      beamspot = BSFormatVdM(ifile, fittype).get() if flavour=='vdm' else BSFormatVanilla(ifile, fittype).get()
+      beamspot = FormatInputTxt(ifile, fittype)
     
     return beamspot

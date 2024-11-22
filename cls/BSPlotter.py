@@ -2,7 +2,7 @@ import ROOT
 import os
 from array    import array
 from datetime import datetime
-from BSGraph  import BSGraphByTime
+from BSGraph  import BSGraph, BSGraphByTime
 from BSCanvas import BSCanvasCMS
 from BSLine   import BSLineRun, BSLineFill
 from BSLatex  import BSLatexRun, BSLatexFill, BSLatexRunOOR, BSLatexFillOOR
@@ -34,6 +34,19 @@ class BSPlot1D:
       c.Draw("SAME")
     can.SaveAs(dirout+'/'+self.yvar+'.pdf', 'pdf')
     can.SaveAs(dirout+'/'+self.yvar+'.png', 'png')
+
+class BSPlot1DGeneric(BSPlot1D):
+  ''' base class for plotting a generic 1D graph.
+  '''
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    assert 'xvar' in kwargs.keys()
+    self.xvar = kwargs['xvar']
+    self.plot = BSGraph(len(self.data.keys()),
+      array('d', [bs[self.xvar] for bs in self.data.values()]),
+      array('d', [bs[self.yvar] for bs in self.data.values()]),
+    )
+    self.plot.SetTitle(';{X};{Y}'.format(X='date (UTC)', Y=self.ylab))
 
 class BSPlot1DByTime(BSPlot1D):
   ''' base class for plotting a 1D graph from a beamspot dictionary vs. time

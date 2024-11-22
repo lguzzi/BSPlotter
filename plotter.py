@@ -9,15 +9,14 @@ if __name__=='__main__':
   parser.add_argument('--output'  , required=True)
   parser.add_argument('--debug'   , action='store_true')
   parser.add_argument('--streams' , default=1, type=int)
-  parser.add_argument('--flavour' , default='default', help='set to \'vdm\' if the output formatting is vdm-like (contains the PV cov. matrix)')
   args = parser.parse_args()
 
   BSParser.DEBUG = args.debug
   # https://github.com/cms-sw/cmssw/blob/master/RecoVertex/BeamSpotProducer/src/BeamFitter.cc#L525-L533
   # https://github.com/cms-sw/cmssw/blob/4417f8d1645a31988011de3b45776241ca7708e0/DataFormats/BeamSpot/interface/BeamSpot.h#L24
-  bssuccess     = BSParser(file=args.input, threads=args.streams, flavour=args.flavour, fittype=2)
-  failedFake    = BSParser(file=args.input, threads=args.streams, flavour=args.flavour, fittype=0)
-  failedUnknown = BSParser(file=args.input, threads=args.streams, flavour=args.flavour, fittype=-1)
+  bssuccess     = BSParser(file=args.input, threads=args.streams, fittype=2)
+  failedFake    = BSParser(file=args.input, threads=args.streams, fittype=0)
+  failedUnknown = BSParser(file=args.input, threads=args.streams, fittype=-1)
   bssuccess     .fetch_timestamps_from_OMS() # good fits
   failedFake    .fetch_timestamps_from_OMS() # failed tracks fit
   failedUnknown .fetch_timestamps_from_OMS() # failed vertices fit
