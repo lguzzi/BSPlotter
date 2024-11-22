@@ -6,6 +6,7 @@ class BSCanvas (ROOT.TCanvas):
   '''
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
+    ROOT.SetOwnership(self, False)
     self.SetGridx()
     self.SetGridy()
     self.SetBottomMargin(0.1)
@@ -14,7 +15,7 @@ class BSCanvasCMS(BSCanvas):
   ''' apply default CMS cosmetics to the canvas
   '''
   def __init__(self, **kwargs):
-    super().__init__('c1','',1420,335)
+    super().__init__(kwargs.get('name', 'c1'),'',1420,335)
     self.SetTopMargin(0.10)
     self.SetLeftMargin(0.05)
     self.SetRightMargin(0.05)

@@ -15,8 +15,8 @@ class MPManager:
       with mp.Pool(threads) as pool:
         print('[INFO] running parallel on {} jobs'.format(threads))
         progressbar = mp.Process(target=self._progressbar)
-        progressbar.start()
         results = pool.map(function, iterables)
+        progressbar.start()
         self.progress.value = 100
         time.sleep(0.1)
         progressbar.terminate()
