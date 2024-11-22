@@ -1,6 +1,5 @@
 from cls.BSParser   import BSParser
 from cls.BSPlotter  import BSPlot1DByTime
-from cls.MPUtils    import MPManager
 
 if __name__=='__main__':
   import argparse
@@ -20,11 +19,8 @@ if __name__=='__main__':
   bssuccess     .fetch_timestamps_from_OMS() # good fits
   failedFake    .fetch_timestamps_from_OMS() # failed tracks fit
   failedUnknown .fetch_timestamps_from_OMS() # failed vertices fit
-
   failedMerged = {**failedUnknown.beamspot, **failedFake.beamspot}
-
-  #bsparser.elaborate_runnumbers()
-  #bsparser.writeTxtFile(filename=args.output+'/BSFit_formatted.txt')
+  
   for plot in [BSPlot1DByTime(yvariable=y, ylabel=l, data=bssuccess.beamspot)
     for y,l in {
     'x'         : 'beam spot x [cm]'        ,

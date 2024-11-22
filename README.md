@@ -30,3 +30,5 @@ An example of use is shown in [plotter.py](plotter.py):
 ```bash
 python3 plotter.py --streams 15 --input input.txt --output test
 ```
+
+**NOTE:** if the execution crashes with ```requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)```, try setting a lower stream count.  
