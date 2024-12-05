@@ -1,6 +1,6 @@
 import os, sys
 sys.path.append('cls')
-from MPUtils  import MPManager
+from MPUtils  import MPManagerThreads
 from OMSUtils import fetch_data, get_authenticator
 from datetime import datetime
 from BSFormat import FormatInputTxt, FormatOutputTxt
@@ -10,15 +10,15 @@ import numpy as np
 class BSParser:
   '''class to handle beamspot file operations
   '''
-  MANAGER=MPManager()
   DEBUG=False
+  STREAMS=5
   AUTHENTICATOR=get_authenticator(verbose=DEBUG)
 
-  def __init__(self, file, threads=1, flavour='default', fittype=2):
+  def __init__(self, file, flavour='default', streams=1, fittype=2):
     self.filename = os.path.basename(file)
     self.beamspot = BSParser.readTxtFile(file, fittype=fittype, flavour=flavour)
-    self.threads  = threads
     self.flavour  = flavour
+    self.STREAMS  = streams
 
   def writeTxtFile(self, filename):
     ''' write a .txt file with specific formatting
@@ -29,50 +29,46 @@ class BSParser:
     ''' fetch timestamps from OMS with parallel streams
     '''
     print("[INFO] fetching data from OMS for", self.filename)
-    fetched = BSParser.MANAGER.run_parallel(threads=self.threads,
-      function=BSParser._fetch_timestamps_from_OMS,
-      iterables=[(r,ls,le,len(self.beamspot.keys())) for (r,ls,le) in self.beamspot.keys()],
-      debug=BSParser.DEBUG
-    )
+    entries = [(r,ls,le,len(self.beamspot.keys())) for (r,ls,le) in self.beamspot.keys()]
+    fetched = MPManagerThreads(workers=self.STREAMS)(BSParser._fetch_timestamps_from_OMS)(*entries)
     fetched = {k:v for f in fetched for k,v in f.items()}
     for k in fetched.keys():
       self.beamspot[k] = {**self.beamspot[k],**fetched[k]}
       BSParser._compute_proper_widths(self.beamspot[k])
 
   @staticmethod
-  def _fetch_timestamps_from_OMS(entry):
+  def _fetch_timestamps_from_OMS(run, lumistart, lumiend, size):
     ''' base function for fetching BS information from OMS
     '''
-    run,ls,le,tot = entry
     toepoch = lambda tme: (datetime.strptime(tme, "%Y-%m-%dT%H:%M:%SZ")-datetime(1970,1,1)).total_seconds()
     runjsn  = fetch_data(datatype='runs'         , dataid=run, omsapi=BSParser.AUTHENTICATOR)
-    lsjsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(ls)]), omsapi=BSParser.AUTHENTICATOR)
-    lejsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(le)]), omsapi=BSParser.AUTHENTICATOR) if le!=ls else lsjsn
+    lsjsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(lumistart)]), omsapi=BSParser.AUTHENTICATOR)
+    lejsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(lumiend  )]), omsapi=BSParser.AUTHENTICATOR) if lumiend!=lumistart else lsjsn
     filljsn = fetch_data(datatype='fills'        , dataid=runjsn['data']['attributes']['fill_number'], omsapi=BSParser.AUTHENTICATOR)
     lumlist = [lsjsn]+[
-      fetch_data(datatype='lumisections', dataid='_'.join([str(run), str(l)]), omsapi=BSParser.AUTHENTICATOR) for l in range(le+1,ls)
-    ]+[lejsn] if le!=ls else [lsjsn]
+      fetch_data(datatype='lumisections', dataid='_'.join([str(run), str(l)]), omsapi=BSParser.AUTHENTICATOR) for l in range(lumistart+1,lumiend)
+    ]+[lejsn] if lumiend!=lumistart else [lsjsn]
 
     beamspot = {}
-    beamspot[(run,ls,le)] = {}
-    beamspot[(run,ls,le)]['fill'      ] = filljsn['data']['id']
-    beamspot[(run,ls,le)]['run'       ] = runjsn ['data']['id']
-    beamspot[(run,ls,le)]['fillstamp' ] = toepoch(filljsn['data']['attributes']['start_time'])
-    beamspot[(run,ls,le)]['runstamp'  ] = toepoch(runjsn ['data']['attributes']['start_time'])
-    beamspot[(run,ls,le)]['date'      ] = lsjsn['data']['attributes']['start_time'] 
-    beamspot[(run,ls,le)]['IOVbegin'  ] = toepoch(lsjsn['data']['attributes']['start_time'])
-    beamspot[(run,ls,le)]['IOVend'    ] = toepoch(lsjsn['data']['attributes']['end_time'  ])
-    beamspot[(run,ls,le)]['init_lumi' ] = sum(lum['data']['attributes']['init_lumi'] for lum in lumlist)  # 10^31 /s/cm^2
-    beamspot[(run,ls,le)]['avg_pu'    ] = sum(lum['data']['attributes']['pileup']    for lum in lumlist)/len(lumlist)
-    beamspot[(run,ls,le)]['timestamp' ] = 0.5*(
+    beamspot[(run,lumistart,lumiend)] = {}
+    beamspot[(run,lumistart,lumiend)]['fill'      ] = filljsn['data']['id']
+    beamspot[(run,lumistart,lumiend)]['run'       ] = runjsn ['data']['id']
+    beamspot[(run,lumistart,lumiend)]['fillstamp' ] = toepoch(filljsn['data']['attributes']['start_time'])
+    beamspot[(run,lumistart,lumiend)]['runstamp'  ] = toepoch(runjsn ['data']['attributes']['start_time'])
+    beamspot[(run,lumistart,lumiend)]['date'      ] = lsjsn['data']['attributes']['start_time'] 
+    beamspot[(run,lumistart,lumiend)]['IOVbegin'  ] = toepoch(lsjsn['data']['attributes']['start_time'])
+    beamspot[(run,lumistart,lumiend)]['IOVend'    ] = toepoch(lsjsn['data']['attributes']['end_time'  ])
+    beamspot[(run,lumistart,lumiend)]['init_lumi' ] = sum(lum['data']['attributes']['init_lumi'] for lum in lumlist)  # 10^31 /s/cm^2
+    beamspot[(run,lumistart,lumiend)]['avg_pu'    ] = sum(lum['data']['attributes']['pileup']    for lum in lumlist)/len(lumlist)
+    beamspot[(run,lumistart,lumiend)]['timestamp' ] = 0.5*(
       toepoch(lejsn['data']['attributes']['end_time'  ]) +
       toepoch(lsjsn['data']['attributes']['start_time'])
     )
-    beamspot[(run,ls,le)]['timewidth'] = (
+    beamspot[(run,lumistart,lumiend)]['timewidth'] = (
       toepoch(lejsn['data']['attributes']['end_time'  ]) -
       toepoch(lsjsn['data']['attributes']['start_time'])
     )
-    BSParser.MANAGER.progress.value += 100./tot
+    #BSParser.MANAGER.progress.value += 100./tot
     return beamspot
 
   @staticmethod
