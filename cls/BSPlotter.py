@@ -40,7 +40,7 @@ class BSPlot1DGeneric(BSPlot1D):
   '''
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    assert 'xvar' in kwargs.keys()
+    assert 'xvar' in kwargs.keys(), "you must specify a xvar argument with the name of the variable to plot"
     self.xvar = kwargs['xvar']
     self.plot = BSGraph(len(self.data.keys()),
       array('d', [bs[self.xvar] for bs in self.data.values()]),

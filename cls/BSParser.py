@@ -34,7 +34,8 @@ class BSParser:
       iterables=[(r,ls,le,len(self.beamspot.keys())) for (r,ls,le) in self.beamspot.keys()],
       debug=BSParser.DEBUG
     )
-    fetched = {k:v for f in fetched for k,v in f.items()}
+    fetched = {k:v for f in fetched for k,v in f.items() if f}
+    self.beamspot = {k:v for k,v in self.beamspot.items() if k in fetched.keys()}
     for k in fetched.keys():
       self.beamspot[k] = {**self.beamspot[k],**fetched[k]}
       BSParser._compute_proper_widths(self.beamspot[k])
@@ -52,6 +53,9 @@ class BSParser:
     lumlist = [lsjsn]+[
       fetch_data(datatype='lumisections', dataid='_'.join([str(run), str(l)]), omsapi=BSParser.AUTHENTICATOR) for l in range(le+1,ls)
     ]+[lejsn] if le!=ls else [lsjsn]
+
+    if not (runjsn and lsjsn and lejsn and filljsn):
+      return {}
 
     beamspot = {}
     beamspot[(run,ls,le)] = {}
