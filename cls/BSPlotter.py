@@ -25,7 +25,7 @@ class BSPlot1D:
       array('d', [bs[self.xvar] for bs in self.data.values()]),
       array('d', [bs[self.yvar] for bs in self.data.values()]),
     )
-    self.plot.SetTitle(';{X};{Y}'.format(X='date (UTC)', Y=self.ylab))
+    self.plot.SetTitle(';{X};{Y}'.format(X=xlabel, Y=self.ylab))
 
   def add_cosmetics(self):
     ''' cosmetics are additional informations such as run/fill numbers, specific of the type of plot
@@ -41,6 +41,23 @@ class BSPlot1D:
       c.Draw("SAME")
     can.SaveAs(dirout+'/'+self.yvar+'.pdf', 'pdf')
     can.SaveAs(dirout+'/'+self.yvar+'.png', 'png')
+
+class BSPlot1DByRun(BSPlot1D):
+  ''' base class for plotting a 1D graph from a beamspot dictionary vs. run
+  '''
+  def __init__(self, *args, **kwargs):
+    kwargs.update({'xvariable':'uniquerun', 'xlabel':'run number'})
+    super().__init__(*args, **kwargs)
+
+  def add_cosmetics(self):
+    ymin = self.plot.GetYaxis().GetXmin()
+    ymax = self.plot.GetYaxis().GetXmax()
+    xmin = self.plot.GetXaxis().GetXmin()
+    xmax = self.plot.GetXaxis().GetXmax()
+    fills = set([(self.data[k]['fill'], self.data[k]['fillstamp']) for k in self.data.keys()])
+    self.cosmetics = [
+      BSLineFill (t, ymin, t, ymax) for f, t in fills if xmin < t < xmax ]+[
+      BSLatexFill(t+0.01*(xmax-xmin), ymax-0.2*(ymax-ymin), f) if xmin < t < xmax else BSLatexFillOOR(xmin+0.01*(xmax-xmin), ymax-0.05*(ymax-ymin), "since fill " +f) for f, t in fills]
 
 class BSPlot1DByTime(BSPlot1D):
   ''' base class for plotting a 1D graph from a beamspot dictionary vs. time

@@ -38,7 +38,8 @@ class BSParser:
     self.beamspot = {k:v for k,v in self.beamspot.items() if k in fetched.keys()}
     for k in fetched.keys():
       self.beamspot[k] = {**self.beamspot[k],**fetched[k]}
-      BSParser._compute_proper_widths(self.beamspot[k])
+      if self.flavour=='default':
+        BSParser._compute_proper_widths(self.beamspot[k])
 
   @staticmethod
   def _fetch_timestamps_from_OMS(entry):
@@ -76,6 +77,7 @@ class BSParser:
       toepoch(lejsn['data']['attributes']['end_time'  ]) -
       toepoch(lsjsn['data']['attributes']['start_time'])
     )
+    beamspot[(run,ls,le)]['uniquerun'] = float(runjsn['data']['id'])+ls/runjsn ['data']['attributes']['last_lumisection_number']
     BSParser.MANAGER.progress.value += 100./tot
     return beamspot
 
@@ -127,6 +129,6 @@ class BSParser:
     }
     '''
     with open(file, 'r') as ifile:
-      beamspot = FormatInputTxt(ifile, fittype)
+      beamspot = FormatInputTxt(ifile, fittype, flavour=flavour)
     
     return beamspot

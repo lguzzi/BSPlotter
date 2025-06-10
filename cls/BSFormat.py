@@ -1,12 +1,12 @@
 from collections import OrderedDict
 import os
 
-def FormatInputTxt(file, fittype, delimeter='Runnumber'):
-  ''' read the result of the beam analyzer and convert it into a dictionary.
-  The grep veto is needed because some lines have similar names.
+def _fetcher_vdm(file, fittype):
+  ''' fetcher for the default beamspot format
   '''
-  grep = lambda txt, chunk, veto='margheritamiaquestaepurapoesiaeladedicoate': [l for l in chunk if txt in l and not veto in l][0]
-  data = {
+  grep = lambda txt, chunk, veto='margheritamiaquestaepurapoesiaeladedicoate': ([l for l in chunk if txt in l and not veto in l]+['missing -99'])[0]
+  delimeter = 'Runnumber'
+  return {
     ( int(chunk[0]                                ), 
       int(grep('LumiRange', chunk).split(' ')[-3] ),
       int(grep('LumiRange', chunk).split(' ')[-1] )): {
@@ -32,6 +32,40 @@ def FormatInputTxt(file, fittype, delimeter='Runnumber'):
     } for chunk in [d.split('\n') for d in file.read().split(delimeter) if len(d)]
     if int(grep('Type', chunk).split(' ')[-1])==fittype
   }
+def _fetcher_database(file, fittype):
+  ''' fetcher for the database beamspot format
+  '''
+  grep = lambda txt, chunk, veto='margheritamiaquestaepurapoesiaeladedicoate': ([l for l in chunk if txt in l and not veto in l]+['missing -99'])[0]
+  delimeter = 'for runs:'
+  return {
+    ( int(chunk[0].split(' ')[-3] ),
+      int(chunk[0].split(' ')[-1] ),
+      int(chunk[0].split(' ')[-1] )): {
+      'fittype'     : int   (grep('Beam type'     , chunk               ).split(' ')[-1]),
+      'x'           : float (grep('X0'            , chunk, veto='xPV'   ).split(' ')[-4]),
+      'y'           : float (grep('Y0'            , chunk, veto='yPV'   ).split(' ')[-4]),
+      'z'           : float (grep('Z0'            , chunk               ).split(' ')[-4]),
+      'widthZ'      : float (grep('Sigma Z0'      , chunk               ).split(' ')[-4]),
+      'dxdz'        : float (grep('dxdz'          , chunk, veto='dxdzPV').split(' ')[-4]),
+      'dydz'        : float (grep('dydz'          , chunk, veto='dydzPV').split(' ')[-4]),
+      'widthX'      : float (grep('Beam Width X'  , chunk               ).split(' ')[-4]),
+      'widthY'      : float (grep('Beam Width Y'  , chunk               ).split(' ')[-4]),
+      'emittanceX'  : float (grep('Emittance X'   , chunk               ).split(' ')[-2]),
+      'emittanceY'  : float (grep('Emittance Y'   , chunk               ).split(' ')[-2]),
+      'betaStar'    : float (grep('Beta star'     , chunk               ).split(' ')[-2]),
+    } for chunk in [d.split('\n') for d in file.read().split(delimeter) if len(d)]
+    if int(grep('Beam type', chunk).split(' ')[-1])==fittype
+  }
+
+def FormatInputTxt(file, fittype, flavour):
+  ''' read the result of the beam analyzer and convert it into a dictionary.
+  The grep veto is needed because some lines have similar names.
+  '''
+  fetcher = {
+    'default' : _fetcher_vdm,
+    'database': _fetcher_database,
+  }[flavour]
+  data = fetcher(file=file, fittype=fittype)
   return data
 
 def FormatOutputTxt(self, data, filename):
