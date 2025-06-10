@@ -13,12 +13,19 @@ ROOT.gROOT.SetBatch(True)
 class BSPlot1D:
   ''' virtual class for plotting a 1D graph from a beamspot dictionary
   '''
-  def __init__(self, yvariable, ylabel, data):
-    self.xvar = None
+  def __init__(self, yvariable, ylabel, data, xvariable, xlabel):
     self.yvar = yvariable
+    self.xvar = xvariable
     self.ylab = ylabel
+    self.xlab = xlabel
     self.data = data
     self.cosmetics = []
+    
+    self.plot = BSGraph(len(self.data.keys()),
+      array('d', [bs[self.xvar] for bs in self.data.values()]),
+      array('d', [bs[self.yvar] for bs in self.data.values()]),
+    )
+    self.plot.SetTitle(';{X};{Y}'.format(X='date (UTC)', Y=self.ylab))
 
   def add_cosmetics(self):
     ''' cosmetics are additional informations such as run/fill numbers, specific of the type of plot
@@ -35,30 +42,12 @@ class BSPlot1D:
     can.SaveAs(dirout+'/'+self.yvar+'.pdf', 'pdf')
     can.SaveAs(dirout+'/'+self.yvar+'.png', 'png')
 
-class BSPlot1DGeneric(BSPlot1D):
-  ''' base class for plotting a generic 1D graph.
-  '''
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    assert 'xvar' in kwargs.keys(), "you must specify a xvar argument with the name of the variable to plot"
-    self.xvar = kwargs['xvar']
-    self.plot = BSGraph(len(self.data.keys()),
-      array('d', [bs[self.xvar] for bs in self.data.values()]),
-      array('d', [bs[self.yvar] for bs in self.data.values()]),
-    )
-    self.plot.SetTitle(';{X};{Y}'.format(X='date (UTC)', Y=self.ylab))
-
 class BSPlot1DByTime(BSPlot1D):
   ''' base class for plotting a 1D graph from a beamspot dictionary vs. time
   '''
   def __init__(self, *args, **kwargs):
+    kwargs.update({'xvariable':'timestamp', 'xlabel':'date (UTC)'})
     super().__init__(*args, **kwargs)
-    self.xvar = 'timestamp'
-    self.plot = BSGraphByTime(len(self.data.keys()),
-      array('d', [bs[self.xvar] for bs in self.data.values()]),
-      array('d', [bs[self.yvar] for bs in self.data.values()]),
-    )
-    self.plot.SetTitle(';{X};{Y}'.format(X='date (UTC)', Y=self.ylab))
 
   def add_cosmetics(self):
     ymin = self.plot.GetYaxis().GetXmin()
@@ -95,3 +84,33 @@ def multiplot(plots, output):
   leg.Draw()
   can.SaveAs('{}/{}.pdf'.format(output, var), 'pdf')
   can.SaveAs('{}/{}.png'.format(output, var), 'png')
+
+def multiaxes(left, right, output):
+  os.makedirs(output, exist_ok=True)
+  can = BSCanvasCMS(lumitext="13.6 TeV", extratext='Internal')
+  cosmetics = left[0].cosmetics
+  multigraph = ROOT.TMultiGraph()
+  for i, p in enumerate(left):
+    p.plot.SetLineColor(i+1)
+    p.plot.SetMarkerColor(i+1)
+    p.plot.SetMarkerStyle(i+20)
+    multigraph.Add(p.plot)
+  multigraph.SetNameTitle(left[0].yvar+'multig', ';{};{}'.format(left[0].xvar, left[0].yvar))
+  
+  if len(right):
+    right_axis = right[0].plot.GetYaxis()
+    right_axis.SetLabelColor(right[0].plot.GetLineColor())
+    right_axis.SetTitleColor(right[0].plot.GetLineColor())
+  for p in right:
+    scale_factor = (multigraph.GetYaxis().GetXmax() - multigraph.GetYaxis().GetXmin()) / (p.plot.GetYaxis().GetXmax() - p.plot.GetYaxis().GetXmin())
+    p.plot.Scale(scale_factor)
+  
+  ROOT.SetOwnership(multigraph, False)
+  multigraph.Draw('AP')
+  if len(right):
+    right_axis.Draw()
+
+  for c in cosmetics:
+    c.Draw("SAME")
+  can.SaveAs('{}/{}.pdf'.format(output, left[0].yvar), 'pdf')
+  can.SaveAs('{}/{}.png'.format(output, left[0].yvar), 'png')
