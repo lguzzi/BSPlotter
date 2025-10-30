@@ -1,5 +1,5 @@
 from cls.BSParser   import BSParser
-from cls.BSPlotter  import BSPlot1DByTime,BSPlot1DByRun
+from cls.BSPlotter  import BSPlot1DByTime,BSPlot1DByRun,BSPlot1DByFill
 
 if __name__=='__main__':
   import argparse
@@ -22,7 +22,7 @@ if __name__=='__main__':
   #failedUnknown .fetch_timestamps_from_OMS() # failed vertices fit
   #failedMerged = {**failedUnknown.beamspot, **failedFake.beamspot}
   
-  for plot in [BSPlot1DByRun(yvariable=y, ylabel=l, data=bssuccess.beamspot)
+  for plot in [BSPlot1DByFill(yvariable=y, ylabel=l, data=bssuccess.beamspot)
     for y,l in {
     'x'         : 'beam spot x [cm]'        ,
     'y'         : 'beam spot y [cm]'        ,

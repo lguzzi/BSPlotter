@@ -20,12 +20,6 @@ class BSPlot1D:
     self.xlab = xlabel
     self.data = data
     self.cosmetics = []
-    
-    self.plot = BSGraph(len(self.data.keys()),
-      array('d', [bs[self.xvar] for bs in self.data.values()]),
-      array('d', [bs[self.yvar] for bs in self.data.values()]),
-    )
-    self.plot.SetTitle(';{X};{Y}'.format(X=xlabel, Y=self.ylab))
 
   def add_cosmetics(self):
     ''' cosmetics are additional informations such as run/fill numbers, specific of the type of plot
@@ -42,12 +36,29 @@ class BSPlot1D:
     can.SaveAs(dirout+'/'+self.yvar+'.pdf', 'pdf')
     can.SaveAs(dirout+'/'+self.yvar+'.png', 'png')
 
+class BSPlot1DByFill(BSPlot1D):
+  ''' base class for plotting a 1D graph from a beamspot dictionary vs. run
+  '''
+  def __init__(self, *args, **kwargs):
+    kwargs.update({'xvariable':'uniquefill', 'xlabel':'fill number'})
+    super().__init__(*args, **kwargs)
+    self.plot = BSGraph(len(self.data.keys()),
+      array('d', [bs[self.xvar] for bs in self.data.values()]),
+      array('d', [bs[self.yvar] for bs in self.data.values()]),
+    )
+    self.plot.SetTitle(';{X};{Y}'.format(X=self.xlab, Y=self.ylab))
+
 class BSPlot1DByRun(BSPlot1D):
   ''' base class for plotting a 1D graph from a beamspot dictionary vs. run
   '''
   def __init__(self, *args, **kwargs):
     kwargs.update({'xvariable':'uniquerun', 'xlabel':'run number'})
     super().__init__(*args, **kwargs)
+    self.plot = BSGraph(len(self.data.keys()),
+      array('d', [bs[self.xvar] for bs in self.data.values()]),
+      array('d', [bs[self.yvar] for bs in self.data.values()]),
+    )
+    self.plot.SetTitle(';{X};{Y}'.format(X=self.xlab, Y=self.ylab))
 
   def add_cosmetics(self):
     ymin = self.plot.GetYaxis().GetXmin()
@@ -65,6 +76,11 @@ class BSPlot1DByTime(BSPlot1D):
   def __init__(self, *args, **kwargs):
     kwargs.update({'xvariable':'timestamp', 'xlabel':'date (UTC)'})
     super().__init__(*args, **kwargs)
+    self.plot = BSGraphByTime(len(self.data.keys()),
+      array('d', [bs[self.xvar] for bs in self.data.values()]),
+      array('d', [bs[self.yvar] for bs in self.data.values()]),
+    )
+    self.plot.SetTitle(';{X};{Y}'.format(X=self.xlab, Y=self.ylab))
 
   def add_cosmetics(self):
     ymin = self.plot.GetYaxis().GetXmin()
