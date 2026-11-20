@@ -1,5 +1,5 @@
 import importlib
-OMSAPI = importlib.import_module("oms-api-client.omsapi").OMSAPI
+from omsapi import OMSAPI
 
 def get_authenticator(authentication='auth_device', verbose=False):
   omsapi =  OMSAPI("https://cmsoms.cern.ch/agg/api", "v1", cert_verify=False, verbose=verbose)

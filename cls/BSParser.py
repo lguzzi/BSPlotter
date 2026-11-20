@@ -15,15 +15,12 @@ class BSParser:
   AUTHENTICATOR=get_authenticator(verbose=DEBUG)
 
   def __init__(self, file, threads=1, flavour='default', fittype=2):
+    # trigger the web authentication to avoid multiple authentications in parallel threads
+    authenticate = fetch_data(datatype='runs', dataid=333333, omsapi=BSParser.AUTHENTICATOR)
     self.filename = os.path.basename(file)
     self.beamspot = BSParser.readTxtFile(file, fittype=fittype, flavour=flavour)
     self.threads  = threads
     self.flavour  = flavour
-
-  def writeTxtFile(self, filename):
-    ''' write a .txt file with specific formatting
-    '''
-    formatter = FormatOutputTxt(self.beamspot, formatting=self.flavour)
 
   def fetch_timestamps_from_OMS(self):
     ''' fetch timestamps from OMS with parallel streams
@@ -67,7 +64,7 @@ class BSParser:
     beamspot[(run,ls,le)]['date'      ] = lsjsn['data']['attributes']['start_time'] 
     beamspot[(run,ls,le)]['IOVbegin'  ] = toepoch(lsjsn['data']['attributes']['start_time'])
     beamspot[(run,ls,le)]['IOVend'    ] = toepoch(lsjsn['data']['attributes']['end_time'  ])
-    beamspot[(run,ls,le)]['init_lumi' ] = sum(lum['data']['attributes']['init_lumi'] for lum in lumlist)  # 10^31 /s/cm^2
+    beamspot[(run,ls,le)]['init_lumi' ] = sum(lum['data']['attributes']['init_lumi'] for lum in lumlist)/len(lumlist)  # 10^31 /s/cm^2
     beamspot[(run,ls,le)]['avg_pu'    ] = sum(lum['data']['attributes']['pileup']    for lum in lumlist)/len(lumlist)
     beamspot[(run,ls,le)]['timestamp' ] = 0.5*(
       toepoch(lejsn['data']['attributes']['end_time'  ]) +
@@ -135,5 +132,15 @@ class BSParser:
     '''
     with open(file, 'r') as ifile:
       beamspot = FormatInputTxt(ifile, fittype, flavour=flavour)
-    
     return beamspot
+  
+  def writeTabularTxt(self, dirout):
+    '''write a .txt beamspot file in tabular format
+    '''
+    os.makedirs(dirout, exist_ok=True)
+    outputfile = self.filename.replace('.txt', '')
+    FormatOutputTxt(self.beamspot, f'{dirout}/{outputfile}_default.txt', ispv=False)
+    FormatOutputTxt(self.beamspot, f'{dirout}/{outputfile}_PV.txt', ispv=True)
+
+    print(f"[INFO] fit info written to {outputfile}_default.txt in {dirout}")
+    print(f"[INFO] fit info written to {outputfile}_PV.txt in {dirout}")

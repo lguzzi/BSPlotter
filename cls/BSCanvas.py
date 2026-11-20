@@ -36,18 +36,11 @@ class BSCanvasCMS(BSCanvas):
     self.lumitext.SetTextSize(0.7*self.GetTopMargin()*0.9)
     self.lumitext.SetTextAlign(31)
 
-  def SaveAs(self, *args, **kwargs):
-    ''' this is needed for cosmetics to appear
+  def DrawExtra(self):
+    ''' draw cosmetics. The SaveAs function cannot be overridden due to 
+    ROOT policy.
     '''
     self.cmstext  .Draw()
     self.extratext.Draw()
     self.lumitext .Draw()
-    super().SaveAs(*args, **kwargs)
 
-  def Print(self, *args, **kwargs):
-    ''' this is needed for cosmetics to appear
-    '''
-    self.cmstext  .Draw()
-    self.extratext.Draw()
-    self.lumitext .Draw()
-    super().Print(*args, **kwargs)
