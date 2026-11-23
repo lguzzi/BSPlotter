@@ -1,4 +1,4 @@
-import os, sys
+import os, sys, math
 sys.path.append('cls')
 from MPUtils  import MPManager
 from OMSUtils import fetch_data, get_authenticator
@@ -35,8 +35,7 @@ class BSParser:
     self.beamspot = {k:v for k,v in self.beamspot.items() if k in fetched.keys()}
     for k in fetched.keys():
       self.beamspot[k] = {**self.beamspot[k],**fetched[k]}
-      #if self.flavour=='default':
-        #BSParser._compute_proper_widths(self.beamspot[k])
+      BSParser._compute_proper_widths(self.beamspot[k])
 
   @staticmethod
   def _fetch_timestamps_from_OMS(entry):
@@ -84,11 +83,14 @@ class BSParser:
     return beamspot
 
   @staticmethod
-  def _compute_proper_widths(beamspot):
+  def _compute_proper_widths(beamspot, approximate=True):
     ''' Rotate back the covariance matrix by -dx/dz and -dy/dz.
     The sigma_x and sigma_y *of the luminous region itself* are set.
     The dx/dy rotation is not corrected (but it's small).
     The effect on sigma_z is neglected as it's small.
+
+    NOTE: the uncertainties for the non-approximated look wrong and anyway I am not sure why we should
+    rotate the BS covariance matrix.
     '''
     # https://github.com/MilanoBicocca-pix/cmssw/blob/2d1e039a413496536abe6931561ea826025dc728/RecoVertex/BeamSpotProducer/src/PVFitter.cc#L302-L312
     # https://github.com/MilanoBicocca-pix/cmssw/blob/2d1e039a413496536abe6931561ea826025dc728/RecoVertex/BeamSpotProducer/src/PVFitter.cc#L241-L252
@@ -99,26 +101,26 @@ class BSParser:
     dydzerr   = beamspot['covariance'][5][5]
     XYerr     = beamspot['covariance'][0][1]
 
-    alpha = unc.ufloat(-beamspot['dydz'], dydzerr)
-    beta  = unc.ufloat(-beamspot['dxdz'], dxdzerr)
+    alpha = unc.ufloat(-beamspot['dydz'], math.sqrt(dydzerr)) if not approximate else unc.ufloat(-beamspot['dydz'], 0.)
+    beta  = unc.ufloat(-beamspot['dxdz'], math.sqrt(dxdzerr)) if not approximate else unc.ufloat(-beamspot['dxdz'], 0.)
 
-    s_xx = unc.ufloat(np.power(beamspot['widthX'], 2), np.power(widthXerr, 2))
-    s_yy = unc.ufloat(np.power(beamspot['widthY'], 2), np.power(widthYerr, 2))
-    s_zz = unc.ufloat(np.power(beamspot['widthZ'], 2), np.power(widthZerr, 2))
+    s_xx = unc.ufloat(np.power(beamspot['widthX'], 2), widthXerr) if not approximate else unc.ufloat(np.power(beamspot['widthX'], 2), 0.)
+    s_yy = unc.ufloat(np.power(beamspot['widthY'], 2), widthYerr) if not approximate else unc.ufloat(np.power(beamspot['widthY'], 2), 0.)
+    s_zz = unc.ufloat(np.power(beamspot['widthZ'], 2), widthZerr) if not approximate else unc.ufloat(np.power(beamspot['widthZ'], 2), 0.)
+    # 100% uncertainty on XY correlation, as we don't save it...
+    s_xz  = beta *(s_zz-s_xx)+alpha*unc.ufloat(XYerr, math.sqrt(abs(XYerr)))
+    s_yz  = alpha*(s_yy-s_zz)-beta *unc.ufloat(XYerr, math.sqrt(abs(XYerr)))
 
-    s_xz  = beta *(s_zz-s_xx)+alpha*unc.ufloat(XYerr, abs(XYerr)) # 100% uncertainty on XY correlation, as we don't save it...
-    s_yz  = alpha*(s_yy-s_zz)-beta *unc.ufloat(XYerr, abs(XYerr)) # 100% uncertainty on XY correlation, as we don't save it...
-
-    s_xx_true = s_xx-2.*beta *s_xz+np.power(beta , 2)*s_zz
-    s_yy_true = s_yy+2.*alpha*s_yz+np.power(alpha, 2)*s_zz
+    s_xx_true = s_xx-2.*beta *s_xz+np.power(beta , 2)*s_zz if not approximate else s_xx - beta*beta *s_zz
+    s_yy_true = s_yy+2.*alpha*s_yz+np.power(alpha, 2)*s_zz if not approximate else s_yy - alpha*alpha*s_zz
     s_zz_true = s_zz
 
     beamspot['widthXTrue'] = np.sqrt(max(0., s_xx_true.n))
     beamspot['widthYTrue'] = np.sqrt(max(0., s_yy_true.n))
     beamspot['widthZTrue'] = np.sqrt(max(0., s_zz_true.n))
 
-    beamspot['widthXTrueerr'] = np.sqrt(max(0., s_xx_true.s))
-    beamspot['widthYTrueerr'] = np.sqrt(max(0., s_yy_true.s))
+    beamspot['widthXTrueerr'] = np.sqrt(max(0., s_xx_true.s)) if not approximate else math.sqrt(max(0,s_xx_true.n)) * math.sqrt(max(0., widthXerr)) / max(1.e-12, beamspot['widthX'])
+    beamspot['widthYTrueerr'] = np.sqrt(max(0., s_yy_true.s)) if not approximate else math.sqrt(max(0,s_yy_true.n)) * math.sqrt(max(0., widthYerr)) / max(1.e-12, beamspot['widthY'])
     beamspot['widthZTrueerr'] = np.sqrt(max(0., s_zz_true.s))
 
   @staticmethod

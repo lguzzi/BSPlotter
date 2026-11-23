@@ -21,7 +21,7 @@ if __name__=='__main__':
   failedFake    .fetch_timestamps_from_OMS() # failed tracks fit
   failedUnknown .fetch_timestamps_from_OMS() # failed vertices fit
   failedMerged = {**failedUnknown.beamspot, **failedFake.beamspot}
-  bssuccess.writeTabularTxt(dirout='/'.join(args.output.split('/')[:-1]))
+  bssuccess.writeTabularTxt(dirout='/'.join(args.output.split('/')[:-2])+'/txt')
 
   for plot in [BSPlot1DByTime(yvariable=y, ylabel=l, data=bssuccess.beamspot)
     for y,l in {
