@@ -3,14 +3,24 @@ from    multiprocessing import managers
 import  time, os, sys
 
 class MPManager:
-  ''' manage multiprocess operations
-  '''
+  """Run mapped jobs in worker processes and track their aggregate progress."""
   def __init__(self, threads=1):
+    """Initialize a shared progress counter.
+
+    ``threads`` is retained for compatibility; the worker count is provided
+    to :meth:`run_parallel`.
+    """
     self.progress = mp.Value('f', 0.0)
 
   def run_parallel(self, function, iterables, threads, debug=False):
-    ''' run a function in parallel and print a progressbar
-    '''
+    """Map ``function`` over ``iterables`` and return results in input order.
+
+    Args:
+      function: Callable invoked once per item.
+      iterables: Items passed to ``function``.
+      threads: Number of worker processes when ``debug`` is false.
+      debug: If true, run calls serially without creating a process pool.
+    """
     if not debug:
       with mp.Pool(threads) as pool:
         print('[INFO] running parallel on {} jobs'.format(threads))
@@ -27,8 +37,7 @@ class MPManager:
     return results
 
   def _progressbar(self):
-    ''' base function to print a progressbar
-    '''
+    """Print the shared job progress counter until it reaches 100 percent."""
     bar = lambda dim=50: '[{}{}%{}]'.format(
       '#'*int(self.progress.value*dim//100) , 
       int(self.progress.value)               , 
