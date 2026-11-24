@@ -1,9 +1,13 @@
+"""Convert supported beam-spot text formats to and from Python mappings."""
+
 from collections import OrderedDict
 import os, math
 
 def _fetcher_vdm(file, fittype):
-  ''' fetcher for the default beamspot format
-  '''
+  """Parse the standard beam-spot producer text layout.
+
+  Records whose ``Type`` field does not match ``fittype`` are skipped.
+  """
   grep = lambda txt, chunk, veto='margheritamiaquestaepurapoesiaeladedicoate': ([l for l in chunk if txt in l and not veto in l]+['missing -99'])[0]
   delimeter = 'Runnumber'
   return {
@@ -37,8 +41,10 @@ def _fetcher_vdm(file, fittype):
     if int(grep('Type', chunk).split(' ')[-1])==fittype
   }
 def _fetcher_database(file, fittype):
-  ''' fetcher for the database beamspot format
-  '''
+  """Parse the database-style beam-spot text layout.
+
+  Records whose ``Beam type`` field does not match ``fittype`` are skipped.
+  """
   grep = lambda txt, chunk, veto='margheritamiaquestaepurapoesiaeladedicoate': ([l for l in chunk if txt in l and not veto in l]+['missing -99'])[0]
   delimeter = 'for runs:'
   return {
@@ -66,9 +72,18 @@ def _fetcher_database(file, fittype):
   }
 
 def FormatInputTxt(file, fittype, flavour):
-  ''' read the result of the beam analyzer and convert it into a dictionary.
-  The grep veto is needed because some lines have similar names.
-  '''
+  """Parse a beam-spot text stream into records keyed by run and lumi range.
+
+  Args:
+    file: Open text stream containing fit results.
+    fittype: Fit status code to retain.
+    flavour: Input layout, either ``'default'`` or ``'database'``.
+
+  Returns:
+    A mapping from ``(run, lumi_start, lumi_end)`` to fit-value dictionaries.
+    The standard layout includes covariance matrices; the database layout
+    contains the fields provided by that format.
+  """
   fetcher = {
     'default' : _fetcher_vdm,
     'database': _fetcher_database,
@@ -77,8 +92,16 @@ def FormatInputTxt(file, fittype, flavour):
   return data
 
 def FormatOutputTxt(data, filename, ispv=False):
-  ''' write the .txt file with the specified format
-  '''
+  """Write fit records as a tab-separated beam-spot text table.
+
+  Args:
+    data: Mapping of fit records to serialize.
+    filename: Destination file path.
+    ispv: If true, write the primary-vertex values and covariance matrix;
+      otherwise, write the standard fit values and corrected widths.
+
+  The standard table's beam widths are the unrotated laboratory-frame values.
+  """
   print('[WARNING] Writing beamspot width in the LAB RF (unrotated)')
   for run,bs in data.items():
     data[run]['runnumber'] = run[0]

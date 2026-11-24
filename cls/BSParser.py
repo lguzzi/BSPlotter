@@ -8,13 +8,31 @@ import uncertainties as unc
 import numpy as np
 
 class BSParser:
-  '''class to handle beamspot file operations
-  '''
+  """Read beam-spot fits and enrich them with CMS OMS metadata.
+
+  ``beamspot`` maps ``(run, lumi_start, lumi_end)`` tuples to fit values.
+  OMS-derived fields such as timestamps, fill numbers, luminosity, and pileup
+  are added by :meth:`fetch_timestamps_from_OMS`.
+
+  ``DEBUG`` controls whether OMS requests are processed serially rather than
+  through the multiprocessing pool.
+  """
   MANAGER=MPManager()
   DEBUG=False
   AUTHENTICATOR=get_authenticator(verbose=DEBUG)
 
   def __init__(self, file, threads=1, flavour='default', fittype=2):
+    """Load matching fits from ``file`` and prepare OMS access.
+
+    Args:
+      file: Path to a beam-spot fit-result text file.
+      threads: Number of worker processes used for OMS lookups.
+      flavour: Input layout, either ``'default'`` or ``'database'``.
+      fittype: Fit status code to retain; defaults to successful fits (2).
+
+    The input is parsed immediately. OMS metadata is fetched separately by
+    calling :meth:`fetch_timestamps_from_OMS`.
+    """
     # trigger the web authentication to avoid multiple authentications in parallel threads
     authenticate = fetch_data(datatype='runs', dataid=333333, omsapi=BSParser.AUTHENTICATOR)
     self.filename = os.path.basename(file)
@@ -23,8 +41,13 @@ class BSParser:
     self.flavour  = flavour
 
   def fetch_timestamps_from_OMS(self):
-    ''' fetch timestamps from OMS with parallel streams
-    '''
+    """Fetch run, fill, and lumisection metadata for each parsed fit.
+
+    Fits without matching OMS records are removed from ``self.beamspot``.
+    Remaining records are enriched with timestamps, luminosity, pileup, and
+    unique run/fill coordinates, then have their slope-corrected widths
+    computed. Requests run in parallel unless ``BSParser.DEBUG`` is true.
+    """
     print("[INFO] fetching data from OMS for", self.filename)
     fetched = BSParser.MANAGER.run_parallel(threads=self.threads,
       function=BSParser._fetch_timestamps_from_OMS,
@@ -39,8 +62,12 @@ class BSParser:
 
   @staticmethod
   def _fetch_timestamps_from_OMS(entry):
-    ''' base function for fetching BS information from OMS
-    '''
+    """Fetch OMS metadata for one ``(run, lumi_start, lumi_end, total)`` job.
+
+    This worker is an implementation detail used by
+    :meth:`fetch_timestamps_from_OMS`; it returns an empty mapping when a
+    required OMS record is unavailable.
+    """
     run,ls,le,tot = entry
     toepoch = lambda tme: (datetime.strptime(tme, "%Y-%m-%dT%H:%M:%SZ")-datetime(1970,1,1)).total_seconds()
     runjsn  = fetch_data(datatype='runs'         , dataid=run, omsapi=BSParser.AUTHENTICATOR)
@@ -94,14 +121,16 @@ class BSParser:
 
   @staticmethod
   def _compute_proper_widths(beamspot, approximate=True):
-    ''' Rotate back the covariance matrix by -dx/dz and -dy/dz.
-    The sigma_x and sigma_y *of the luminous region itself* are set.
-    The dx/dy rotation is not corrected (but it's small).
-    The effect on sigma_z is neglected as it's small.
+    """Add beam-slope-corrected widths to one parsed fit record.
 
-    NOTE: the uncertainties for the non-approximated look wrong and anyway I am not sure why we should
-    rotate the BS covariance matrix.
-    '''
+    The values are stored as ``widthXTrue``, ``widthYTrue``, and
+    ``widthZTrue`` with corresponding ``...err`` fields. With the default
+    ``approximate=True``, uncertainties from the slopes and correlations are
+    neglected; the correction to the z width is also neglected.
+
+    This method mutates ``beamspot`` in place. The non-approximated
+    uncertainty calculation is retained for comparison and is not the default.
+    """
     # https://github.com/MilanoBicocca-pix/cmssw/blob/2d1e039a413496536abe6931561ea826025dc728/RecoVertex/BeamSpotProducer/src/PVFitter.cc#L302-L312
     # https://github.com/MilanoBicocca-pix/cmssw/blob/2d1e039a413496536abe6931561ea826025dc728/RecoVertex/BeamSpotProducer/src/PVFitter.cc#L241-L252
     widthXerr = beamspot['covariance'][6][6]
@@ -135,20 +164,28 @@ class BSParser:
 
   @staticmethod
   def readTxtFile(file, fittype=2, flavour='default'):
-    '''read a .txt beamspot file written in the 
-    beamspot producer format and save the results
-    in a dictionary 
-    {
-      (run,ls_start,ls_end): info
-    }
-    '''
+    """Read a fit-result file and return selected records.
+
+    Args:
+      file: Path to the input text file.
+      fittype: Fit status code to keep.
+      flavour: Input layout, either ``'default'`` or ``'database'``.
+
+    Returns:
+      A mapping from ``(run, lumi_start, lumi_end)`` tuples to fit-value
+      dictionaries.
+    """
     with open(file, 'r') as ifile:
       beamspot = FormatInputTxt(ifile, fittype, flavour=flavour)
     return beamspot
   
   def writeTabularTxt(self, dirout):
-    '''write a .txt beamspot file in tabular format
-    '''
+    """Write standard and PV tab-separated fit tables under ``dirout``.
+
+    The output files are named ``<input-stem>_default.txt`` and
+    ``<input-stem>_PV.txt``. The standard table reports unrotated
+    laboratory-frame widths.
+    """
     os.makedirs(dirout, exist_ok=True)
     outputfile = self.filename.replace('.txt', '')
     FormatOutputTxt(self.beamspot, f'{dirout}/{outputfile}_default.txt', ispv=False)
