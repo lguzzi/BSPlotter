@@ -44,15 +44,25 @@ class BSParser:
     run,ls,le,tot = entry
     toepoch = lambda tme: (datetime.strptime(tme, "%Y-%m-%dT%H:%M:%SZ")-datetime(1970,1,1)).total_seconds()
     runjsn  = fetch_data(datatype='runs'         , dataid=run, omsapi=BSParser.AUTHENTICATOR)
-    lsjsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(ls)]), omsapi=BSParser.AUTHENTICATOR)
-    lejsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(le)]), omsapi=BSParser.AUTHENTICATOR) if le!=ls else lsjsn
-    filljsn = fetch_data(datatype='fills'        , dataid=runjsn['data']['attributes']['fill_number'], omsapi=BSParser.AUTHENTICATOR)
-    lumlist = [lsjsn]+[
-      fetch_data(datatype='lumisections', dataid='_'.join([str(run), str(l)]), omsapi=BSParser.AUTHENTICATOR) for l in range(le+1,ls)
-    ]+[lejsn] if le!=ls else [lsjsn]
-
-    if not (runjsn and lsjsn and lejsn and filljsn):
+    if not runjsn:
       return {}
+    lsjsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(ls)]), omsapi=BSParser.AUTHENTICATOR)
+    if not lsjsn:
+      return {}
+    lejsn   = fetch_data(datatype='lumisections' , dataid='_'.join([str(run), str(le)]), omsapi=BSParser.AUTHENTICATOR) if le!=ls else lsjsn
+    if not lejsn:
+      return {}
+    filljsn = fetch_data(datatype='fills'        , dataid=runjsn['data']['attributes']['fill_number'], omsapi=BSParser.AUTHENTICATOR)
+    if not filljsn:
+      return {}
+
+    lumlist = [lsjsn]
+    for l in range(ls+1,le):
+      lum = fetch_data(datatype='lumisections', dataid='_'.join([str(run), str(l)]), omsapi=BSParser.AUTHENTICATOR)
+      if lum:
+        lumlist.append(lum)
+    if le!=ls:
+      lumlist.append(lejsn)
 
     beamspot = {}
     beamspot[(run,ls,le)] = {}
