@@ -12,6 +12,7 @@ if __name__=='__main__':
   args = parser.parse_args()
 
   BSParser.DEBUG = args.debug
+  BSParser.NTHREADS = args.streams
   # https://github.com/cms-sw/cmssw/blob/master/RecoVertex/BeamSpotProducer/src/BeamFitter.cc#L525-L533
   # https://github.com/cms-sw/cmssw/blob/4417f8d1645a31988011de3b45776241ca7708e0/DataFormats/BeamSpot/interface/BeamSpot.h#L24
   bssuccess     = BSParser(file=args.input, threads=args.streams, fittype=2 , flavour=args.flavour)

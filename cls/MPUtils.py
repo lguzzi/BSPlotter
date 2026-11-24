@@ -1,5 +1,6 @@
 from threading import Event, Lock, Thread
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import wraps
 import shutil, sys
 
 class Progress:
@@ -31,15 +32,22 @@ class Progress:
         self.snapshot()
         print()
 
-def parallelize(func, nthreads=None):
-    def wrapper(args):
+def parallelize(func=None, *, nthreads=1, debug=False, **kwargs):
+    if func is None:
+        return lambda f: parallelize(f, nthreads=nthreads, debug=debug)
+
+    @wraps(func)
+    def wrapper(self, args, nthreads=nthreads, debug=debug, **kwargs):
+        if debug:
+            return [func(self, arg, **kwargs) for arg in args]
+
         stop_event = Event()
         progress = Progress(len(args))
         results, errors = [None] * len(args), []
 
         def run(arg):
             try:
-                return func(arg)
+                return func(self, arg, **kwargs)
             finally:
                 progress.increment()
         
