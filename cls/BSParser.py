@@ -57,6 +57,14 @@ class BSParser:
 
     lumlist = [lsjsn]
     for l in range(ls+1,le):
+      lum = fetch_data(datatype='lumisections', dataid='_'.join([str(run), str(l)]), omsapi=BSParser.AUTHENTICATOR)
+      if lum:
+        lumlist.append(lum)
+    if le!=ls:
+      lumlist.append(lejsn)
+
+    lumlist = [lsjsn]
+    for l in range(ls+1,le):
       lj = fetch_data(datatype='lumisections', dataid='_'.join([str(run), str(l)]), omsapi=BSParser.AUTHENTICATOR)
       if lj:
         lumlist.append(lj)
